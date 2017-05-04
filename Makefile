@@ -20,9 +20,7 @@ all: game
 	$(CC) -c $(CFLAGS) $< -o $@
 
 %.o: %.glsl
-	objcopy -I binary -O elf64-x86-64 -B i386:x86-64 \
-		--rename-section .data=.rodata,alloc,load,readonly,data,contents \
-		$< $@
+	./bin2o.sh $< $@
 
 $(OBJ): Makefile
 

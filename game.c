@@ -15,11 +15,11 @@
 
 #define DISC_SUBDIV 16
 
-extern const char _binary_vertex_glsl_start;
-extern const char _binary_vertex_glsl_end;
+extern const char vertex_glsl[];
+extern const int vertex_glsl_size;
 
-extern const char _binary_fragment_glsl_start;
-extern const char _binary_fragment_glsl_end;
+extern const char fragment_glsl[];
+extern const int fragment_glsl_size;
 
 typedef struct {
 	GLfloat x;
@@ -98,19 +98,11 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 
 	GLuint vertex_shader;
 	GLuint fragment_shader;
-	{
-		const char *vertex_glsl = &_binary_vertex_glsl_start;
-		size_t vertex_glsl_len = &_binary_vertex_glsl_end - &_binary_vertex_glsl_start;
-		if(compile_shader(GL_VERTEX_SHADER, vertex_glsl, vertex_glsl_len, &vertex_shader)) {
-			return -1;
-		}
+	if(compile_shader(GL_VERTEX_SHADER, vertex_glsl, vertex_glsl_size, &vertex_shader)) {
+		return -1;
 	}
-	{
-		const char *fragment_glsl = &_binary_fragment_glsl_start;
-		size_t fragment_glsl_len = &_binary_fragment_glsl_end - &_binary_fragment_glsl_start;
-		if(compile_shader(GL_FRAGMENT_SHADER, fragment_glsl, fragment_glsl_len, &fragment_shader)) {
-			return -1;
-		}
+	if(compile_shader(GL_FRAGMENT_SHADER, fragment_glsl, fragment_glsl_size, &fragment_shader)) {
+		return -1;
 	}
 	GLuint program = glCreateProgram();
 	glAttachShader(program, vertex_shader);

@@ -123,7 +123,6 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 
 	GLuint vbo = gen_disc_vbo();
 
-	glDisable(GL_CULL_FACE);
 
 	bool run = true;
 	SDL_Event ev;

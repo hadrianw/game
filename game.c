@@ -107,11 +107,11 @@ gen_disc_vao(struct vao *vao_out)
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(buf), buf, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(
 		0, 2, GL_FLOAT, GL_FALSE,
 		sizeof(buf[0]), (GLvoid*)0
 	);
-	glEnableVertexAttribArray(0);
 
 	glBindVertexArray(0);
 

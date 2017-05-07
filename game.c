@@ -41,6 +41,12 @@ struct projection {
 	float bottom;
 };
 
+struct vao {
+	GLuint vao;
+	GLenum mode;
+	GLsizei count;
+};
+
 struct scene {
 	struct projection projection;
 	mat3x2 projection_matrix;
@@ -49,8 +55,8 @@ struct scene {
 		GLint transform;
 	} shader;
 	struct {
-		GLuint disc;
-	} vbo;
+		struct vao disc;
+	} vao;
 };
 
 void
@@ -78,8 +84,8 @@ projection_set_matrix(struct projection *proj, mat3x2 *mat)
 	mat->pos.y = -(proj->top + proj->bottom) * invy;;
 }
 
-GLuint
-gen_disc_vbo()
+void
+gen_disc_vao(struct vao *vao_out)
 {
 	GLuint vao;
 	GLuint vbo;
@@ -96,12 +102,22 @@ gen_disc_vbo()
 
 	glGenVertexArrays(1, &vao);
 	glGenBuffers(1, &vbo);
+
 	glBindVertexArray(vao);
+
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(buf), buf, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glVertexAttribPointer(
+		0, 2, GL_FLOAT, GL_FALSE,
+		sizeof(buf[0]), (GLvoid*)0
+	);
+	glEnableVertexAttribArray(0);
 
-	return vbo;
+	glBindVertexArray(0);
+
+	vao_out->vao = vao;
+	vao_out->mode = GL_TRIANGLE_FAN;
+	vao_out->count = LEN(buf);
 }
 
 int
@@ -204,14 +220,10 @@ resize(struct scene *scene, int width, int height)
 void
 render(struct scene *scene)
 {
-	glBindBuffer(GL_ARRAY_BUFFER, scene->vbo.disc);
-	glVertexAttribPointer(
-		0, 2, GL_FLOAT, GL_FALSE,
-		2 * sizeof(GLfloat), (GLvoid*)0
-	);
-	glEnableVertexAttribArray(0);
+	glBindVertexArray(scene->vao.disc.vao);
 	glUseProgram(scene->shader.program);
-	glDrawArrays(GL_TRIANGLE_FAN, 0, DISC_SUBDIV + 2);
+	glDrawArrays(scene->vao.disc.mode, 0, scene->vao.disc.count);
+	glBindVertexArray(0);
 }
 
 int
@@ -233,7 +245,7 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 		return -1;
 	}
 
-	scene.vbo.disc = gen_disc_vbo();
+	gen_disc_vao(&scene.vao.disc);
 
 	bool run = true;
 	SDL_Event ev;

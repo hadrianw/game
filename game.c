@@ -45,6 +45,7 @@ struct vao {
 	GLuint vao;
 	GLenum mode;
 	GLsizei count;
+	GLsizei primcount;
 };
 
 struct scene {
@@ -222,7 +223,11 @@ render(struct scene *scene)
 {
 	glBindVertexArray(scene->vao.disc.vao);
 	glUseProgram(scene->shader.program);
-	glDrawArrays(scene->vao.disc.mode, 0, scene->vao.disc.count);
+	glDrawArraysInstanced(
+		scene->vao.disc.mode,
+		0, scene->vao.disc.count,
+		scene->vao.disc.primcount
+	);
 	glBindVertexArray(0);
 }
 
@@ -246,6 +251,27 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 	}
 
 	gen_disc_vao(&scene.vao.disc);
+
+	vec2 buf[1000];
+	memset(buf, 0, sizeof(buf));
+	scene.vao.disc.primcount = LEN(buf);
+
+	GLuint instances_vbo;
+	glGenBuffers(1, &instances_vbo);
+
+	glBindVertexArray(scene.vao.disc.vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER, instances_vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(buf), buf, GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(
+		1, 2, GL_FLOAT, GL_FALSE,
+		sizeof(buf[0]), (GLvoid*)0
+	);
+
+	glVertexAttribDivisor(1, 1);
+
+	glBindVertexArray(0);
 
 	bool run = true;
 	SDL_Event ev;

@@ -26,6 +26,55 @@ typedef struct {
 	GLfloat y;
 } vec2;
 
+typedef struct {
+	vec2 col1;
+	vec2 col2;
+	vec2 pos;
+} mat3x2;
+
+static const mat3x2 mat3x2_identity = {{1.f, 0.f}, {0.f, 1.f}};
+
+struct projection {
+	float left;
+	float top;
+	float right;
+	float bottom;
+};
+
+struct scene {
+	struct projection projection;
+	mat3x2 projection_matrix;
+	struct {
+		GLuint program;
+		GLint transform;
+	} shader;
+};
+
+void
+projection_base_diagonal(struct projection *proj, int width, int height)
+{
+	proj->right = 100.f * 2.f / sqrtf(width * width + height * height);
+	proj->top = proj->right;
+
+	proj->right *= width;
+	proj->left = -proj->right;
+	proj->top *= height;
+	proj->bottom = -proj->top;
+}
+
+void
+projection_set_matrix(struct projection *proj, mat3x2 *mat)
+{
+	float invx = 1.f / (proj->right - proj->left);
+	float invy = 1.f / (proj->top - proj->bottom);
+
+	mat->col1.x = 2.f * invx;
+	mat->col2.y = 2.f * invy;
+
+	mat->pos.x = -(proj->right + proj->left) * invx;;
+	mat->pos.y = -(proj->top + proj->bottom) * invy;;
+}
+
 GLuint
 gen_disc_vbo()
 {
@@ -92,21 +141,30 @@ framelimit(Uint32 *prevtime)
 }
 
 int
-loop(SDL_Window *win, SDL_GLContext ctx)
+compile_program(GLuint *program_out)
 {
-	(void)ctx;
-
+	int rc = -1;
 	GLuint vertex_shader;
 	GLuint fragment_shader;
-	if(compile_shader(GL_VERTEX_SHADER, vertex_glsl, vertex_glsl_size, &vertex_shader)) {
+
+	if(compile_shader(
+		GL_VERTEX_SHADER, vertex_glsl, vertex_glsl_size,
+		&vertex_shader
+	)) {
 		return -1;
 	}
-	if(compile_shader(GL_FRAGMENT_SHADER, fragment_glsl, fragment_glsl_size, &fragment_shader)) {
-		return -1;
+
+	if(compile_shader(
+		GL_FRAGMENT_SHADER, fragment_glsl, fragment_glsl_size,
+		&fragment_shader
+	)) {
+		goto out_delete_vs;
 	}
+
 	GLuint program = glCreateProgram();
 	glAttachShader(program, vertex_shader);
 	glAttachShader(program, fragment_shader);
+
 	glLinkProgram(program);
 	{
 		GLint status;
@@ -116,13 +174,55 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 		if(!status) {
 			glGetProgramInfoLog(program, sizeof(log), NULL, log);
 			fprintf(stderr, "glLinkProgram failed: %s\n", log);
-			return -1;
+
+			glDeleteProgram(program);
+			goto out_delete_fs;
 		}
 	}
 
+	rc = 0;
+	*program_out = program;
+out_delete_fs:
+	glDeleteShader(fragment_shader);
+out_delete_vs:
+	glDeleteShader(vertex_shader);
+
+	return rc;
+}
+
+void
+resize(struct scene *scene, int width, int height)
+{
+	glViewport(0, 0, width, height);
+	projection_base_diagonal(&scene->projection, width, height);
+	projection_set_matrix(&scene->projection, &scene->projection_matrix);
+	glUseProgram(scene->shader.program);
+	glUniformMatrix3x2fv(
+		scene->shader.transform, 1, GL_FALSE,
+		(GLfloat*)&scene->projection_matrix
+	);
+}
+
+int
+loop(SDL_Window *win, SDL_GLContext ctx)
+{
+	(void)ctx;
+
+	struct scene scene = { .projection_matrix = mat3x2_identity };
+
+	if(compile_program(&scene.shader.program) < 0) {
+		return -1;
+	}
+
+	scene.shader.transform = glGetUniformLocation(
+		scene.shader.program, "transform"
+	);
+	if(scene.shader.transform < 0) {
+		fputs("glGetUniformLocation transform failed\n", stderr);
+		return -1;
+	}
 
 	GLuint vbo = gen_disc_vbo();
-
 
 	bool run = true;
 	SDL_Event ev;
@@ -136,7 +236,10 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 			case SDL_WINDOWEVENT:
 				switch(ev.window.event) {
 				case SDL_WINDOWEVENT_RESIZED:
-					glViewport(0, 0, ev.window.data1, ev.window.data2);
+					resize(
+						&scene,
+						ev.window.data1, ev.window.data2
+					);
 					break;
 				default:
 					break;
@@ -159,7 +262,7 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
 		glEnableVertexAttribArray(0);  
 
-		glUseProgram(program);
+		glUseProgram(scene.shader.program);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glDrawArrays(GL_TRIANGLE_FAN, 0, DISC_SUBDIV + 2);
 

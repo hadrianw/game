@@ -48,6 +48,9 @@ struct scene {
 		GLuint program;
 		GLint transform;
 	} shader;
+	struct {
+		GLuint disc;
+	} vbo;
 };
 
 void
@@ -119,11 +122,6 @@ compile_shader(GLenum type, const GLchar *source, GLint size, GLuint *shader_out
 	}
 	*shader_out = shader;
 	return 0;
-}
-
-void
-render()
-{
 }
 
 void
@@ -203,6 +201,19 @@ resize(struct scene *scene, int width, int height)
 	);
 }
 
+void
+render(struct scene *scene)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, scene->vbo.disc);
+	glVertexAttribPointer(
+		0, 2, GL_FLOAT, GL_FALSE,
+		2 * sizeof(GLfloat), (GLvoid*)0
+	);
+	glEnableVertexAttribArray(0);
+	glUseProgram(scene->shader.program);
+	glDrawArrays(GL_TRIANGLE_FAN, 0, DISC_SUBDIV + 2);
+}
+
 int
 loop(SDL_Window *win, SDL_GLContext ctx)
 {
@@ -222,7 +233,7 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 		return -1;
 	}
 
-	GLuint vbo = gen_disc_vbo();
+	scene.vbo.disc = gen_disc_vbo();
 
 	bool run = true;
 	SDL_Event ev;
@@ -257,16 +268,8 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 		}
 
 		glClear(GL_COLOR_BUFFER_BIT);
+		render(&scene);
 
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
-		glEnableVertexAttribArray(0);  
-
-		glUseProgram(scene.shader.program);
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, DISC_SUBDIV + 2);
-
-		render();
 		SDL_GL_SwapWindow(win);
 		framelimit(&prevtime);
 	}

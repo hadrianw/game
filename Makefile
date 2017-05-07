@@ -1,5 +1,5 @@
-OPTIM = -g -O0 -Werror
-#OPTIM = -O2
+#OPTIM = -g -O0 -Werror
+OPTIM = -Ofast
 CFLAGS = -std=c99 $(OPTIM) -Wall -Wextra -pedantic \
 	-fno-omit-frame-pointer \
 	-Wno-missing-field-initializers \

@@ -63,7 +63,7 @@ struct scene {
 void
 projection_base_diagonal(struct projection *proj, int width, int height)
 {
-	proj->right = 100.f * 2.f / sqrtf(width * width + height * height);
+	proj->right = 100.f * 1.f / sqrtf(width * width + height * height);
 	proj->top = proj->right;
 
 	proj->right *= width;
@@ -252,9 +252,17 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 
 	gen_disc_vao(&scene.vao.disc);
 
-	vec2 buf[1000];
-	memset(buf, 0, sizeof(buf));
-	scene.vao.disc.primcount = LEN(buf);
+	vec2 pos[2000];
+	vec2 prev_pos[LEN(pos)];
+	vec2 acc[LEN(pos)];
+
+	for(size_t i = 0; i < LEN(pos); i++) {
+		int width = 800;
+		int height = 600;
+		pos[i].x = scene.projection.right + (rand() % width);
+		pos[i].y = scene.projection.bottom + (rand() % height);
+	}
+	scene.vao.disc.primcount = LEN(pos);
 
 	GLuint instances_vbo;
 	glGenBuffers(1, &instances_vbo);
@@ -262,11 +270,11 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 	glBindVertexArray(scene.vao.disc.vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, instances_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(buf), buf, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos, GL_DYNAMIC_DRAW);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(
 		1, 2, GL_FLOAT, GL_FALSE,
-		sizeof(buf[0]), (GLvoid*)0
+		sizeof(pos[0]), (GLvoid*)0
 	);
 
 	glVertexAttribDivisor(1, 1);
@@ -276,6 +284,9 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 	bool run = true;
 	SDL_Event ev;
 	Uint32 prevtime = SDL_GetTicks();
+	srand(prevtime);
+
+	float delta = 1.f / FPS;
 
 	while(run) {
 		while(SDL_PollEvent(&ev)) {
@@ -289,6 +300,14 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 						&scene,
 						ev.window.data1, ev.window.data2
 					);
+					for(size_t i = 0; i < LEN(pos); i++) {
+						int width = scene.projection.right - scene.projection.left - 4.f;
+						int height = scene.projection.top - scene.projection.bottom - 4.f;
+						pos[i].x = scene.projection.left + (rand() % width) + 2.f;
+						pos[i].y = scene.projection.bottom + (rand() % height) + 2.f;
+					}
+					memset(prev_pos, 0, sizeof(prev_pos));
+					memset(acc, 0, sizeof(acc));
 					break;
 				default:
 					break;
@@ -305,7 +324,74 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 			}
 		}
 
+		// gravity
+		for(size_t i = 0; i < LEN(acc); i++) {
+		    acc[i].y += -2.5f;
+		}
+
+		// acc
+		for(size_t i = 0; i < LEN(pos); i++) {
+		    pos[i].x += acc[i].x * delta * delta;
+		    pos[i].y += acc[i].y * delta * delta;
+		}
+		memset(acc, 0, sizeof(acc));
+
+		// collide
+		for(size_t i = 0; i < LEN(pos); i++){
+			for(size_t j = i + 1; j < LEN(pos); j++){
+				vec2 diff = {
+					pos[i].x - pos[j].x,
+					pos[i].y - pos[j].y
+				};
+				float sqlen = diff.x * diff.x + diff.y * diff.y;
+				float radius = 1.f;
+				float target = radius + radius;
+				float sqtarget = target * target;
+
+				if(sqlen < sqtarget) {
+					float len = sqrtf(sqlen);
+					float mv = 0.5f * (len - target) / len;
+					pos[i].x -= diff.x * mv;
+					pos[i].y -= diff.y * mv;
+					pos[j].x += diff.x * mv;
+					pos[j].y += diff.y * mv;
+				}
+			}
+		}
+
+		// border collide
+		for(size_t i = 0; i < LEN(pos); i++) {
+			float radius = 1.f;
+
+			if(pos[i].x - radius < scene.projection.left){
+				pos[i].x = scene.projection.left + radius;
+			}
+			else if(pos[i].x + radius > scene.projection.right){
+				pos[i].x = scene.projection.right - radius;
+			}
+
+			if(pos[i].y - radius < scene.projection.bottom){
+				pos[i].y = scene.projection.bottom + radius;
+			}
+			else if(pos[i].y + radius > scene.projection.top){
+				pos[i].y = scene.projection.top - radius;
+			}
+		}
+
+		// inertia
+		for(size_t i = 0; i < LEN(pos); i++) {
+			vec2 new_pos = {
+				pos[i].x * 2 - prev_pos[i].x,
+				pos[i].y * 2 - prev_pos[i].y
+			};
+			prev_pos[i] = pos[i];
+			pos[i] = new_pos;
+		}
+		glBindBuffer(GL_ARRAY_BUFFER, instances_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos, GL_DYNAMIC_DRAW);
+
 		glClear(GL_COLOR_BUFFER_BIT);
+
 		render(&scene);
 
 		SDL_GL_SwapWindow(win);

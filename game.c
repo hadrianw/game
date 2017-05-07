@@ -52,7 +52,7 @@ gen_disc_vbo()
 	return vbo;
 }
 
-GLint
+int
 compile_shader(GLenum type, const GLchar *source, GLint size, GLuint *shader_out)
 {
 	GLuint shader = glCreateShader(type);

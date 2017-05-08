@@ -293,7 +293,7 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 	glBindVertexArray(scene.vao.disc.vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, instances_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos, GL_STREAM_DRAW);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(
 		1, 2, GL_FLOAT, GL_FALSE,
@@ -411,7 +411,8 @@ loop(SDL_Window *win, SDL_GLContext ctx)
 			pos[i] = new_pos;
 		}
 		glBindBuffer(GL_ARRAY_BUFFER, instances_vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(pos), NULL, GL_STREAM_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos, GL_STREAM_DRAW);
 
 		glClear(GL_COLOR_BUFFER_BIT);
 

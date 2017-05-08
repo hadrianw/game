@@ -16,11 +16,33 @@
 
 #define DISC_SUBDIV 16
 
-extern const char vertex_glsl[];
-extern const int vertex_glsl_size;
+//*
+const char vertex_glsl[] =
+"#version 330 core\n"
+"\n"
+"layout (location = 0) in vec2 position;\n"
+"layout (location = 1) in vec2 offset;\n"
+"\n"
+"uniform mat3x2 transform;\n"
+"\n"
+"void main()\n"
+"{\n"
+"	gl_Position = vec4(\n"
+"		(transform * vec3(position + offset, 1)).xy, 0.0, 1.0\n"
+"	);\n"
+"}\n";
+const int vertex_glsl_size = sizeof(vertex_glsl);
 
-extern const char fragment_glsl[];
-extern const int fragment_glsl_size;
+const char fragment_glsl[] =
+"#version 330 core\n"
+"\n"
+"out vec4 color;\n"
+"\n"
+"void main()\n"
+"{\n"
+"	color = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+"}\n";
+const int fragment_glsl_size = sizeof(fragment_glsl);
 
 typedef struct {
 	GLfloat x;

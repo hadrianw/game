@@ -439,7 +439,7 @@ main(int argc, char **argv)
 	}
 
 	win = SDL_CreateWindow(
-		"verlet",
+		"a game",
 		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 		800, 600,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
